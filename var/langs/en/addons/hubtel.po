@@ -99,3 +99,11 @@ msgstr "Hubtel cannot complete this payment. Check the minimum amount or ask Hub
 msgctxt "Languages::hubtel_response_code"
 msgid "Hubtel response code: [code]"
 msgstr "Hubtel response code: [code]"
+
+msgctxt "Languages::hubtel_checkout_waiting"
+msgid "Complete your payment above. This page moves on by itself once Hubtel confirms the payment. Please do not close it."
+msgstr "Complete your payment above. This page moves on by itself once Hubtel confirms the payment. Please do not close it."
+
+msgctxt "Languages::hubtel_checkout_cancel"
+msgid "Cancel payment and go back"
+msgstr "Cancel payment and go back"

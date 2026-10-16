@@ -1,18 +1,29 @@
 <?php
 
-use Tygh\Registry;
-
 if (!defined('BOOTSTRAP')) {
     die('Access denied');
 }
 
 if (defined('PAYMENT_NOTIFICATION')) {
-    // Called by Hubtel (callback) or by the customer browser (return, cancel)
+    // Called by Hubtel (callback) or by the customer browser inside the iframe (return, cancel)
     $order_id = isset($_REQUEST['order_id']) ? (int) $_REQUEST['order_id'] : 0;
+    $token = isset($_REQUEST['token']) ? (string) $_REQUEST['token'] : '';
 
     if (empty($order_id)) {
         exit;
     }
+
+    $order_info = fn_hubtel_get_order_by_token($order_id, $token);
+
+    if (empty($order_info)) {
+        header('HTTP/1.1 403 Forbidden');
+        echo 'Forbidden';
+        exit;
+    }
+
+    $reference = isset($order_info['payment_info']['hubtel_client_reference'])
+        ? (string) $order_info['payment_info']['hubtel_client_reference']
+        : '';
 
     if ($mode == 'callback') {
         $raw = file_get_contents('php://input');
@@ -26,15 +37,15 @@ if (defined('PAYMENT_NOTIFICATION')) {
             $data = $body['data'];
         }
 
-        $reference = '';
+        $callback_reference = '';
         if (isset($data['ClientReference'])) {
-            $reference = (string) $data['ClientReference'];
+            $callback_reference = (string) $data['ClientReference'];
         } elseif (isset($data['clientReference'])) {
-            $reference = (string) $data['clientReference'];
+            $callback_reference = (string) $data['clientReference'];
         } elseif (isset($body['ClientReference'])) {
-            $reference = (string) $body['ClientReference'];
+            $callback_reference = (string) $body['ClientReference'];
         } elseif (isset($body['clientReference'])) {
-            $reference = (string) $body['clientReference'];
+            $callback_reference = (string) $body['clientReference'];
         }
 
         $code = '';
@@ -44,9 +55,9 @@ if (defined('PAYMENT_NOTIFICATION')) {
             $code = (string) $body['responseCode'];
         }
 
-        // Never trust the callback alone. Process_order checks the status with Hubtel.
-        if ($reference !== '') {
-            fn_hubtel_process_order($order_id, $reference, $code);
+        // Never trust the callback alone. fn_hubtel_process_order checks the status with Hubtel.
+        if ($callback_reference !== '') {
+            fn_hubtel_process_order($order_id, $callback_reference, $code);
         }
 
         header('HTTP/1.1 200 OK');
@@ -56,37 +67,34 @@ if (defined('PAYMENT_NOTIFICATION')) {
     }
 
     if ($mode == 'return') {
-        $order_info = fn_get_order_info($order_id);
-        $reference = isset($order_info['payment_info']['hubtel_client_reference'])
-            ? $order_info['payment_info']['hubtel_client_reference']
-            : '';
-
         if ($reference !== '') {
             $result = fn_hubtel_process_order($order_id, $reference);
 
             if ($result == 'pending' || $result == 'mismatch') {
                 // Keep the order open. The callback or the cron check will confirm it.
-                fn_finish_payment($order_id, array(
-                    'order_status' => 'O',
-                    'reason_text' => __('hubtel_waiting_for_confirmation'),
-                ));
+                $current_order = fn_get_order_info($order_id);
+                if (!empty($current_order) && $current_order['status'] !== 'F' && $current_order['status'] !== 'P') {
+                    fn_finish_payment($order_id, array(
+                        'order_status' => 'O',
+                        'reason_text' => __('hubtel_waiting_for_confirmation'),
+                    ));
+                }
             }
         }
 
-        fn_order_placement_routines('route', $order_id);
+        // We are inside the iframe here. Move the whole window to the store.
+        fn_hubtel_breakout(fn_hubtel_finish_url($order_id, $token));
     }
 
     if ($mode == 'cancel') {
-        $order_info = fn_get_order_info($order_id);
-
-        if (!empty($order_info) && $order_info['status'] !== 'P') {
+        if ($order_info['status'] !== 'P') {
             fn_finish_payment($order_id, array(
                 'order_status' => 'F',
                 'reason_text' => __('hubtel_customer_cancelled'),
             ));
         }
 
-        fn_order_placement_routines('route', $order_id);
+        fn_hubtel_breakout(fn_hubtel_finish_url($order_id, $token));
     }
 
     exit;
@@ -123,14 +131,18 @@ if ($amount === false || $amount <= 0) {
 // Unique reference, max 32 characters. Format: o<order_id>x<random>
 $client_reference = 'o' . $order_id . 'x' . substr(md5(uniqid('', true)), 0, 12);
 
+// Token is part of the callback, return and cancel URLs, and of the iframe page URL
+$checkout_token = bin2hex(random_bytes(32));
+$url_query = 'payment=hubtel&order_id=' . $order_id . '&token=' . $checkout_token;
+
 $description = trim(preg_replace('/[^A-Za-z0-9 ]/', '', 'Order ' . $order_id));
 
 $payload = array(
     'totalAmount' => $amount,
     'description' => $description,
-    'callbackUrl' => fn_url('payment_notification.callback?payment=hubtel&order_id=' . $order_id, AREA, 'https'),
-    'returnUrl' => fn_url('payment_notification.return?payment=hubtel&order_id=' . $order_id, AREA, 'https'),
-    'cancellationUrl' => fn_url('payment_notification.cancel?payment=hubtel&order_id=' . $order_id, AREA, 'https'),
+    'callbackUrl' => fn_url('payment_notification.callback?' . $url_query, AREA, 'https'),
+    'returnUrl' => fn_url('payment_notification.return?' . $url_query, AREA, 'https'),
+    'cancellationUrl' => fn_url('payment_notification.cancel?' . $url_query, AREA, 'https'),
     'merchantAccountNumber' => trim($params['merchant_account_number']),
     'clientReference' => $client_reference,
 );
@@ -155,11 +167,15 @@ if ($res_code !== '' && ctype_digit($res_code) && strlen($res_code) < 4) {
 $checkout_data = (isset($result['data']) && is_array($result['data']))
     ? $result['data']
     : ((isset($result['Data']) && is_array($result['Data'])) ? $result['Data'] : $result);
-$checkout_url = isset($checkout_data['checkoutUrl'])
-    ? (string) $checkout_data['checkoutUrl']
-    : (isset($checkout_data['CheckoutUrl'])
-        ? (string) $checkout_data['CheckoutUrl']
-        : (isset($checkout_data['checkout_url']) ? (string) $checkout_data['checkout_url'] : ''));
+
+// Onsite flow: checkoutDirectUrl is the link meant for paying on your own page (iframe).
+$checkout_url = '';
+foreach (array('checkoutDirectUrl', 'CheckoutDirectUrl', 'checkoutUrl', 'CheckoutUrl', 'checkout_url') as $url_key) {
+    if (!empty($checkout_data[$url_key])) {
+        $checkout_url = (string) $checkout_data[$url_key];
+        break;
+    }
+}
 
 if ($checkout_url === '' || ($res_code !== '' && $res_code !== '0000')) {
     $reason = $res_code !== '' ? fn_hubtel_response_message($res_code) : __('hubtel_initiate_failed');
@@ -175,7 +191,6 @@ if ($checkout_url === '' || ($res_code !== '' && $res_code !== '0000')) {
 }
 
 $checkout_id = isset($checkout_data['checkoutId']) ? (string) $checkout_data['checkoutId'] : (isset($checkout_data['CheckoutId']) ? (string) $checkout_data['CheckoutId'] : '');
-$checkout_token = bin2hex(random_bytes(32));
 
 fn_update_order_payment_info($order_id, array(
     'hubtel_client_reference' => $client_reference,
@@ -191,7 +206,7 @@ $checkout_page_url = fn_url(
 );
 
 if (defined('AJAX_REQUEST')) {
-    \Tygh::$app['ajax']->assign('force_redirection', $checkout_page_url);
+    Tygh::$app['ajax']->assign('force_redirection', $checkout_page_url);
     exit;
 }
 

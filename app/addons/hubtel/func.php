@@ -8,7 +8,7 @@ if (!defined('BOOTSTRAP')) {
 }
 
 const HUBTEL_INITIATE_URL = 'https://payproxyapi.hubtel.com/items/initiate';
-const HUBTEL_STATUS_URL = 'https://api-txnstatus.hubtel.com/transactions/';
+const HUBTEL_STATUS_URL = 'https://api-txstatus.hubtel.com/transactions/';
 
 function fn_hubtel_log($message)
 {
@@ -206,6 +206,19 @@ function fn_hubtel_process_order($order_id, $client_reference, $callback_code = 
 
     $callback_code = (string) $callback_code;
 
+    if (in_array($status, array('failed', 'declined', 'cancelled', 'canceled', 'expired'), true)) {
+        $reason = $callback_code !== '' && $callback_code !== '0000'
+            ? fn_hubtel_response_message($callback_code)
+            : __('hubtel_payment_failed');
+
+        fn_finish_payment($order_id, array(
+            'order_status' => 'F',
+            'reason_text' => $reason,
+        ));
+
+        return 'failed';
+    }
+
     if ($callback_code !== '' && $callback_code !== '0000') {
         if ($callback_code === '0005') {
             // State unknown. Do not mark as failed. Hubtel says to contact support.
@@ -257,4 +270,64 @@ function fn_hubtel_check_pending_orders()
     }
 
     return $summary;
+}
+
+/**
+ * Returns the order only when the token is right and the order uses Hubtel.
+ * The token is created when checkout starts and sits in the order payment info.
+ */
+function fn_hubtel_get_order_by_token($order_id, $token)
+{
+    $order_id = (int) $order_id;
+    $token = (string) $token;
+
+    if ($order_id <= 0 || $token === '') {
+        return array();
+    }
+
+    $order_info = fn_get_order_info($order_id);
+
+    if (empty($order_info)) {
+        return array();
+    }
+
+    $saved = isset($order_info['payment_info']['hubtel_checkout_token'])
+        ? (string) $order_info['payment_info']['hubtel_checkout_token']
+        : '';
+
+    if ($saved === '' || !hash_equals($saved, $token)) {
+        return array();
+    }
+
+    $processor_data = !empty($order_info['payment_id']) ? fn_get_processor_data($order_info['payment_id']) : array();
+
+    if (empty($processor_data['processor_script']) || $processor_data['processor_script'] !== 'hubtel.php') {
+        return array();
+    }
+
+    return $order_info;
+}
+
+function fn_hubtel_finish_url($order_id, $token)
+{
+    return fn_url('hubtel.finish?order_id=' . (int) $order_id . '&token=' . rawurlencode($token), 'C', 'https');
+}
+
+/**
+ * Hubtel sends the customer back to our return and cancel URLs inside the iframe.
+ * This page moves the whole browser window to the store page instead.
+ */
+function fn_hubtel_breakout($url)
+{
+    $js = json_encode((string) $url);
+    $safe = htmlspecialchars((string) $url, ENT_QUOTES, 'UTF-8');
+
+    header('Content-Type: text/html; charset=UTF-8');
+    header('Cache-Control: no-store');
+
+    echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Hubtel</title></head><body>'
+        . '<script>try { window.top.location.href = ' . $js . '; } catch (e) { window.location.href = ' . $js . '; }</script>'
+        . '<noscript><a href="' . $safe . '" target="_top">Continue</a></noscript>'
+        . '</body></html>';
+    exit;
 }
