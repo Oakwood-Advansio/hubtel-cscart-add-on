@@ -1,0 +1,101 @@
+msgid ""
+msgstr "Project-Id-Version: tygh\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language-Team: English\n"
+"Language: en_US\n"
+
+msgctxt "Addons::name::hubtel"
+msgid "Hubtel payments"
+msgstr "Hubtel payments"
+
+msgctxt "Addons::description::hubtel"
+msgid "Accept Mobile Money, bank cards, and wallets in Ghana cedis (GHS) via Hubtel Online Checkout."
+msgstr "Accept Mobile Money, bank cards, and wallets in Ghana cedis (GHS) via Hubtel Online Checkout."
+
+msgctxt "Languages::processor_description_hubtel"
+msgid "Accept Mobile Money (MTN, Telecel, AirtelTigo), bank cards, Hubtel and G-Money wallets in Ghana cedis (GHS) via Hubtel Online Checkout."
+msgstr "Accept Mobile Money (MTN, Telecel, AirtelTigo), bank cards, Hubtel and G-Money wallets in Ghana cedis (GHS) via Hubtel Online Checkout."
+
+msgctxt "Languages::hubtel_client_id"
+msgid "Client ID"
+msgstr "Client ID"
+
+msgctxt "Languages::hubtel_client_id_description"
+msgid "From your Hubtel dashboard, under Programmable API Keys."
+msgstr "From your Hubtel dashboard, under Programmable API Keys."
+
+msgctxt "Languages::hubtel_client_secret"
+msgid "Client Secret"
+msgstr "Client Secret"
+
+msgctxt "Languages::hubtel_client_secret_description"
+msgid "Keep this private. It is shown hidden."
+msgstr "Keep this private. It is shown hidden."
+
+msgctxt "Languages::hubtel_merchant_account_number"
+msgid "Collection Account Number"
+msgstr "Collection Account Number"
+
+msgctxt "Languages::hubtel_merchant_account_number_description"
+msgid "Your Hubtel merchant collection account number."
+msgstr "Your Hubtel merchant collection account number."
+
+msgctxt "Languages::hubtel_cron_key"
+msgid "Cron key"
+msgstr "Cron key"
+
+msgctxt "Languages::hubtel_cron_key_description"
+msgid "Any long random text that protects the pending payment check endpoint."
+msgstr "Any long random text that protects the pending payment check endpoint."
+
+msgctxt "Languages::hubtel_cron_url"
+msgid "Cron URL"
+msgstr "Cron URL"
+
+msgctxt "Languages::hubtel_waiting_for_confirmation"
+msgid "Waiting for Hubtel confirmation"
+msgstr "Waiting for Hubtel confirmation"
+
+msgctxt "Languages::hubtel_checkout_title"
+msgid "Hubtel secure checkout"
+msgstr "Hubtel secure checkout"
+
+msgctxt "Languages::hubtel_customer_cancelled"
+msgid "Customer cancelled the payment on Hubtel"
+msgstr "Customer cancelled the payment on Hubtel"
+
+msgctxt "Languages::hubtel_ghs_currency_required"
+msgid "Hubtel needs an active GHS currency in this store"
+msgstr "Hubtel needs an active GHS currency in this store"
+
+msgctxt "Languages::hubtel_credentials_missing"
+msgid "Hubtel payment processor credentials are not configured"
+msgstr "Hubtel payment processor credentials are not configured"
+
+msgctxt "Languages::hubtel_payment_confirmed"
+msgid "Hubtel payment confirmed"
+msgstr "Hubtel payment confirmed"
+
+msgctxt "Languages::hubtel_initiate_failed"
+msgid "Could not reach Hubtel to start checkout"
+msgstr "Could not reach Hubtel to start checkout"
+
+msgctxt "Languages::hubtel_status_unknown"
+msgid "Hubtel could not reach the payment partner. Payment state is unknown, contact your Hubtel Retail Systems Engineer."
+msgstr "Hubtel could not reach the payment partner. Payment state is unknown, contact your Hubtel Retail Systems Engineer."
+
+msgctxt "Languages::hubtel_payment_failed"
+msgid "Payment failed. Wrong or no PIN, insufficient funds, session timeout, card declined, or the number does not match the channel."
+msgstr "Payment failed. Wrong or no PIN, insufficient funds, session timeout, card declined, or the number does not match the channel."
+
+msgctxt "Languages::hubtel_validation_error"
+msgid "Hubtel validation error. Check the request fields."
+msgstr "Hubtel validation error. Check the request fields."
+
+msgctxt "Languages::hubtel_cannot_complete"
+msgid "Hubtel cannot complete this payment. Check the minimum amount or ask Hubtel to set up fees for your account."
+msgstr "Hubtel cannot complete this payment. Check the minimum amount or ask Hubtel to set up fees for your account."
+
+msgctxt "Languages::hubtel_response_code"
+msgid "Hubtel response code: [code]"
+msgstr "Hubtel response code: [code]"
