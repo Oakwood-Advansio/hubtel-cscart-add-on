@@ -331,3 +331,58 @@ function fn_hubtel_breakout($url)
         . '</body></html>';
     exit;
 }
+
+/**
+ * Builds the pay-on-the-page screen: a full screen layer with the Hubtel iframe.
+ * It is echoed inside the "placing order" page, the same way the Paystack
+ * processor shows its popup. The caller must close body and html.
+ *
+ * @param array $v checkout_url, status_url, finish_url, cancel_url, order_id, amount
+ *
+ * @return string
+ */
+function fn_hubtel_render_overlay(array $v)
+{
+    $e = function ($text) {
+        return htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8');
+    };
+
+    $title = $e(__('hubtel_checkout_title'));
+    $waiting = $e(__('hubtel_checkout_waiting'));
+    $cancel = $e(__('hubtel_checkout_cancel'));
+
+    $html = '<style>'
+        . '#hubtel-layer{position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,.65);overflow:auto;font-family:Arial,Helvetica,sans-serif}'
+        . '#hubtel-box{background:#fff;max-width:480px;margin:20px auto;border-radius:6px;padding:16px;box-sizing:border-box}'
+        . '#hubtel-box h2{margin:0 0 4px;font-size:20px}'
+        . '#hubtel-box .hubtel-sum{margin:0 0 12px;color:#444}'
+        . '#hubtel-frame{border:1px solid #ddd;border-radius:4px;display:block;width:100%;height:600px;max-height:70vh;background:#fff}'
+        . '#hubtel-box .hubtel-note{margin:12px 0 0;color:#555;font-size:14px}'
+        . '#hubtel-box .hubtel-cancel{display:inline-block;margin-top:10px;font-size:14px}'
+        . '</style>'
+        . '<div id="hubtel-layer"><div id="hubtel-box">'
+        . '<h2>' . $title . '</h2>'
+        . '<p class="hubtel-sum">#' . (int) $v['order_id'] . ' &middot; GHS ' . number_format((float) $v['amount'], 2, '.', ',') . '</p>'
+        . '<iframe id="hubtel-frame" src="' . $e($v['checkout_url']) . '" title="' . $title . '" allow="payment *" allowpaymentrequest></iframe>'
+        . '<p class="hubtel-note" id="hubtel-note">' . $waiting . '</p>'
+        . '<a class="hubtel-cancel" href="' . $e($v['cancel_url']) . '">' . $cancel . '</a>'
+        . '</div></div>'
+        . '<script>(function(){'
+        . 'var statusUrl=' . json_encode($v['status_url']) . ';'
+        . 'var finishUrl=' . json_encode($v['finish_url']) . ';'
+        . 'var started=new Date().getTime(),busy=false,timer=null;'
+        . 'function stop(){if(timer){window.clearInterval(timer);timer=null;}}'
+        . 'function check(){'
+        . 'if(busy){return;}'
+        . 'if(new Date().getTime()-started>15*60*1000){stop();return;}'
+        . 'busy=true;var x=new XMLHttpRequest();'
+        . 'x.open("GET",statusUrl+"&_="+new Date().getTime(),true);'
+        . 'x.onreadystatechange=function(){'
+        . 'if(x.readyState!==4){return;}busy=false;if(x.status!==200){return;}'
+        . 'try{var d=JSON.parse(x.responseText);if(d&&(d.state==="paid"||d.state==="failed")){stop();window.location.href=finishUrl;}}catch(e){}'
+        . '};x.send();}'
+        . 'timer=window.setInterval(check,5000);'
+        . '})();</script>';
+
+    return $html;
+}

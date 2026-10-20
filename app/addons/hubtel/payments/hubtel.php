@@ -205,10 +205,23 @@ $checkout_page_url = fn_url(
     'https'
 );
 
+$query = 'order_id=' . $order_id . '&token=' . $checkout_token;
+
 if (defined('AJAX_REQUEST')) {
+    // No page to write into. Send the browser to the checkout page of the add-on.
     Tygh::$app['ajax']->assign('force_redirection', $checkout_page_url);
     exit;
 }
 
-fn_create_payment_form($checkout_page_url, array(), 'Hubtel', false, 'get');
+// Same idea as the Paystack processor: write the pay screen into the "placing order" page.
+echo fn_hubtel_render_overlay(array(
+    'checkout_url' => $checkout_url,
+    'status_url' => fn_url('hubtel.status?' . $query, 'C', 'https'),
+    'finish_url' => fn_hubtel_finish_url($order_id, $checkout_token),
+    'cancel_url' => fn_url('payment_notification.cancel?' . $url_query, 'C', 'https'),
+    'order_id' => $order_id,
+    'amount' => $amount,
+));
+
+echo '</body></html>';
 exit;

@@ -33,4 +33,3 @@
         <item for="uninstall">DELETE FROM ?:payment_processors WHERE processor_script = 'hubtel.php' AND addon = 'hubtel'</item>
     </queries>
 </addon>
-
